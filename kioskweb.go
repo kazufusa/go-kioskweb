@@ -12,16 +12,16 @@ import (
 type Browser string
 
 const (
-	IE   Browser = "IE"
-	Edge Browser = "Edge"
-	// Chrome
-	// Firefox
+	IE     Browser = "IE"
+	Edge   Browser = "Edge"
+	Chrome Browser = "Chrome"
 )
 
 var (
 	args = map[Browser][]string{
-		IE:   {"/c", "start", "iexplore.exe", "-k"},
-		Edge: {"/c", "start", "msedge.exe", "--kiosk", "--edge-kiosk-type=fullscreen"},
+		IE:     {"/c", "start", "iexplore.exe", "-k"},
+		Edge:   {"/c", "start", "msedge.exe", "--kiosk", "--edge-kiosk-type=fullscreen"},
+		Chrome: {"/c", "start", "chrome.exe", "--kiosk", "--disable-pinch"},
 	}
 )
 

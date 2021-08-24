@@ -20,6 +20,7 @@ func TestOpenKioskWeb(t *testing.T) {
 	}{
 		{given: IE, exe: "iexplore.exe"},
 		{given: Edge, exe: "msedge.exe"},
+		{given: Chrome, exe: "chrome.exe"},
 	}
 	for _, tt := range tests {
 		tt := tt
