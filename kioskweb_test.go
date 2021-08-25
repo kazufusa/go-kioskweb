@@ -31,9 +31,9 @@ func TestOpenKioskWeb(t *testing.T) {
 			err = OpenKioskWeb("https://github.com", &Config{Browser: tt.given})
 			assert.NoError(t, err)
 
-			PostPids, err := findPids(tt.exe)
+			postPids, err := findPids(tt.exe)
 			require.NoError(t, err)
-			assert.True(t, len(prePids) < len(PostPids))
+			assert.True(t, len(prePids) < len(postPids))
 		})
 	}
 }
