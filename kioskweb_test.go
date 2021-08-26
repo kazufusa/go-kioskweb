@@ -15,12 +15,13 @@ import (
 
 func TestOpenKioskWeb(t *testing.T) {
 	var tests = []struct {
-		given Browser
+		given browser
 		exe   string
 	}{
 		{given: IE, exe: "iexplore.exe"},
 		{given: Edge, exe: "msedge.exe"},
 		{given: Chrome, exe: "chrome.exe"},
+		{given: Firefox, exe: "firefox.exe"},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -28,7 +29,7 @@ func TestOpenKioskWeb(t *testing.T) {
 			prePids, err := findPids(tt.exe)
 			require.NoError(t, err)
 
-			err = OpenKioskWeb("https://github.com", &Config{Browser: tt.given})
+			err = OpenKioskWeb("https://github.com", Config{Browser: tt.given})
 			assert.NoError(t, err)
 
 			postPids, err := findPids(tt.exe)
@@ -57,7 +58,7 @@ func TestTimeoutToOpenKioskWeb(t *testing.T) {
 
 	err := OpenKioskWeb(
 		"http://localhost:8000",
-		&Config{Browser: IE, WaitCtx: ctx},
+		Config{Browser: IE, WaitCtx: ctx},
 	)
 	assert.Error(t, err)
 }
@@ -67,7 +68,9 @@ func TestNotTimeoutToOpenKioskWeb(t *testing.T) {
 	defer cancel()
 
 	server := &http.Server{Addr: ":8000"}
-	defer server.Shutdown(context.Background())
+	defer func() {
+		_ = server.Shutdown(context.Background())
+	}()
 	go func() {
 		time.Sleep(2 * time.Second)
 		_ = server.ListenAndServe()
@@ -75,7 +78,7 @@ func TestNotTimeoutToOpenKioskWeb(t *testing.T) {
 
 	err := OpenKioskWeb(
 		"http://localhost:8000",
-		&Config{Browser: IE, WaitCtx: ctx},
+		Config{Browser: IE, WaitCtx: ctx},
 	)
 	assert.NoError(t, err)
 }

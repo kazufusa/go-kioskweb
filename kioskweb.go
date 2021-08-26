@@ -20,40 +20,43 @@ import (
 	"github.com/micmonay/keybd_event"
 )
 
-type Browser string
+type browser string
 
 const (
-	IE      Browser = "IE"
-	Edge    Browser = "Edge"
-	Chrome  Browser = "Chrome"
-	Firefox Browser = "Firefox"
+	IE      browser = "IE"
+	Edge    browser = "Edge"
+	Chrome  browser = "Chrome"
+	Firefox browser = "Firefox"
 )
 
 var (
-	args = map[Browser][]string{
-		IE:     {"/c", "start", "iexplore.exe", "-k"},
-		Edge:   {"/c", "start", "msedge.exe", "--kiosk", "--edge-kiosk-type=fullscreen"},
-		Chrome: {"/c", "start", "chrome.exe", "--kiosk", "--disable-pinch"},
+	args = map[browser][]string{
+		IE:      {"/c", "start", "iexplore.exe", "-k"},
+		Edge:    {"/c", "start", "msedge.exe", "--kiosk", "--edge-kiosk-type=fullscreen", "--new-window"},
+		Chrome:  {"/c", "start", "chrome.exe", "--new-window", "--kiosk", "--disable-pinch", "--user-data-dir=%TMP%/kioskweb"},
+		Firefox: {"/c", "start", "firefox.exe", "--kiosk", "--new-window"},
 	}
 
-	titles = map[Browser]*regexp.Regexp{
-		Chrome:  regexp.MustCompile(`- Google Chrome$`),
+	titleRegExps = map[browser]*regexp.Regexp{
 		IE:      regexp.MustCompile(`- Internet Explorer$`),
 		Edge:    regexp.MustCompile(`- Microsoft​ Edge$`),
+		Chrome:  regexp.MustCompile(`- Google Chrome$`),
 		Firefox: regexp.MustCompile(`— Mozilla Firefox$`),
 	}
 )
 
 type Config struct {
-	Browser Browser
+	Browser browser
 	WaitCtx context.Context
 }
 
-func OpenKioskWeb(url string, config *Config) error {
-	pHandles, err := FindWindows(titles[config.Browser])
+// OpenKiosk open url with the user selected browser which is in kiosk mode
+func OpenKioskWeb(url string, config Config) error {
+	pHandles, err := findWindows(titleRegExps[config.Browser])
 	if err != nil {
 		return err
 	}
+
 	if config.WaitCtx != nil {
 		err := wait(config.WaitCtx, url)
 		if err != nil {
@@ -70,48 +73,38 @@ func OpenKioskWeb(url string, config *Config) error {
 
 	var handle syscall.Handle
 	var handles []syscall.Handle
-	if len(pHandles) != 0 {
-		for i := 0; i < 10; i++ {
-			handles, err = FindWindows(titles[config.Browser])
-			if err != nil {
-				return err
-			}
-			handle, err = NewlyOpenedWindow(pHandles, handles)
-			if err != nil {
-				time.Sleep(100 * time.Millisecond)
-			} else {
-				break
-			}
-		}
+
+	for i := 0; i < 20; i++ {
+		handles, err = findWindows(titleRegExps[config.Browser])
 		if err != nil {
 			return err
 		}
-	} else {
-		for i := 0; i < 10; i++ {
-			handles, err = FindWindows(titles[config.Browser])
-			if err != nil {
-				return err
-			}
-			if len(handles) > 0 {
+
+		if len(pHandles) > 0 {
+			handle, err = newlyOpenedWindow(pHandles, handles)
+			if err == nil {
 				break
 			}
-			time.Sleep(100 * time.Millisecond)
+		} else {
+			if len(handles) > 0 {
+				handle = handles[0]
+				break
+			}
 		}
-		if len(handles) == 0 {
-			return errors.New("not found")
-		}
-		handle = handles[0]
+		time.Sleep(100 * time.Millisecond)
 	}
 
-	// escape from start menu in tablet mode
-	err = pressAltTab()
-	if err != nil {
-		return err
-	}
+	// escape from start menu if Windows is in tablet mode
+	_ = pressAltTab()
+	time.Sleep(200 * time.Millisecond)
 
+	if (int)(handle) == 0 {
+		return errors.New("not found")
+	}
 	return SetForegroundWindow(handle)
 }
 
+// wait waits for a url to become available.
 func wait(ctx context.Context, url string) error {
 	ticker := time.NewTicker(time.Second)
 	for {
@@ -127,8 +120,8 @@ func wait(ctx context.Context, url string) error {
 	}
 }
 
-// FindWindows finds all currently opened browsers
-func FindWindows(reTitle *regexp.Regexp) (ret []syscall.Handle, err error) {
+// findWindows returns the syscall.Handle of all current opened application windows.
+func findWindows(reTitle *regexp.Regexp) (ret []syscall.Handle, err error) {
 	cb := syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
 		bytes := make([]uint16, 256)
 		err := GetWindowTextW(h, &bytes[0], int32(len(bytes)))
@@ -145,7 +138,8 @@ func FindWindows(reTitle *regexp.Regexp) (ret []syscall.Handle, err error) {
 	return ret, err
 }
 
-func NewlyOpenedWindow(previous, current []syscall.Handle) (ret syscall.Handle, err error) {
+// newlyOpenedWindow returns a syscall.Handle newly opened.
+func newlyOpenedWindow(previous, current []syscall.Handle) (ret syscall.Handle, err error) {
 	for _, c := range current {
 		for _, p := range previous {
 			if c == p {
@@ -158,6 +152,7 @@ func NewlyOpenedWindow(previous, current []syscall.Handle) (ret syscall.Handle, 
 	return ret, errors.New("not found")
 }
 
+// pressAltTab emits a keyboard event of ALT+TAB.
 func pressAltTab() error {
 	kb, err := keybd_event.NewKeyBonding()
 	if err != nil {
