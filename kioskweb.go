@@ -55,7 +55,7 @@ var (
 // Config is common configuration for browser and wait time
 type Config struct {
 	// Browser is the browser name to open kiosk web applcation.
-	// IE, Edge, Chrome or Firefox are available.
+	// IE, Edge(Default), Chrome or Firefox are available.
 	Browser browser
 	// WaitCtx  is the maximum time to wait for the URL to become available.
 	WaitCtx context.Context
@@ -63,6 +63,9 @@ type Config struct {
 
 // Open opens url with the user selected browser which is in kiosk mode
 func Open(url string, config Config) error {
+	if config.Browser == "" {
+		config.Browser = Edge
+	}
 	pHandles, err := findWindows(titleRegExps[config.Browser])
 	if err != nil {
 		return err
