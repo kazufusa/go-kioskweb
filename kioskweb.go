@@ -34,6 +34,9 @@ const (
 )
 
 var (
+	// ErrHandleNotFound is occured when the newly opend browser handler is not found.
+	ErrHandlerNotFound = errors.New("the window handler of newly opened kiosk browser is not found")
+
 	args = map[browser][]string{
 		IE:      {"/c", "start", "iexplore.exe", "-k"},
 		Edge:    {"/c", "start", "msedge.exe", "--kiosk", "--edge-kiosk-type=fullscreen", "--new-window"},
@@ -107,7 +110,7 @@ func Open(url string, config Config) error {
 	time.Sleep(200 * time.Millisecond)
 
 	if (int)(handle) == 0 {
-		return errors.New("not found")
+		return ErrHandlerNotFound
 	}
 	return SetForegroundWindow(handle)
 }
@@ -157,7 +160,7 @@ func newlyOpenedWindow(previous, current []syscall.Handle) (ret syscall.Handle, 
 		return c, nil
 	CONTINUE:
 	}
-	return ret, errors.New("not found")
+	return ret, ErrHandlerNotFound
 }
 
 // pressAltTab emits a keyboard event of ALT+TAB.
