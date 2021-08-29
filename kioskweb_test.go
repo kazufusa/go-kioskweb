@@ -30,7 +30,7 @@ func TestOpenKioskWeb(t *testing.T) {
 			require.NoError(t, err)
 
 			// In Github Actions, OpenKioskWeb sometimes returns error
-			_ = OpenKioskWeb("https://github.com", Config{Browser: tt.given})
+			_ = Open("https://github.com", Config{Browser: tt.given})
 			// assert.NoError(t, err)
 
 			postPids, err := findPids(tt.exe)
@@ -57,7 +57,7 @@ func TestTimeoutToOpenKioskWeb(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	err := OpenKioskWeb(
+	err := Open(
 		"http://localhost:8000",
 		Config{Browser: IE, WaitCtx: ctx},
 	)
@@ -77,7 +77,7 @@ func TestNotTimeoutToOpenKioskWeb(t *testing.T) {
 		_ = server.ListenAndServe()
 	}()
 
-	err := OpenKioskWeb(
+	err := Open(
 		"http://localhost:8000",
 		Config{Browser: IE, WaitCtx: ctx},
 	)

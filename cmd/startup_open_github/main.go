@@ -13,7 +13,7 @@ import (
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	err := kioskweb.OpenKioskWeb(
+	err := kioskweb.Open(
 		"https://github.com",
 		kioskweb.Config{Browser: kioskweb.IE, WaitCtx: ctx},
 	)

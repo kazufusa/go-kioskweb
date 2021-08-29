@@ -58,8 +58,8 @@ type Config struct {
 	WaitCtx context.Context
 }
 
-// OpenKioskWeb opens url with the user selected browser which is in kiosk mode
-func OpenKioskWeb(url string, config Config) error {
+// Open opens url with the user selected browser which is in kiosk mode
+func Open(url string, config Config) error {
 	pHandles, err := findWindows(titleRegExps[config.Browser])
 	if err != nil {
 		return err
