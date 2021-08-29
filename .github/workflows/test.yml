@@ -8,8 +8,8 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ^1.13
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v1
     - name: cache
       uses: actions/cache@v2
       with:
@@ -18,4 +18,4 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Test
-      run: go test ./... -v
+      run: go test ./... -v -timeout 20m
