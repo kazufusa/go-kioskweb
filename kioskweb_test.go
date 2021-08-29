@@ -5,6 +5,8 @@ package kioskweb
 import (
 	"context"
 	"net/http"
+	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 
@@ -29,13 +31,21 @@ func TestOpenKioskWeb(t *testing.T) {
 			prePids, err := findPids(tt.exe)
 			require.NoError(t, err)
 
-			// In Github Actions, OpenKioskWeb sometimes returns error
-			_ = Open("https://github.com", Config{Browser: tt.given})
-			// assert.NoError(t, err)
+			err = Open("https://github.com", Config{Browser: tt.given})
+			assert.NoError(t, err)
 
 			postPids, err := findPids(tt.exe)
 			require.NoError(t, err)
 			assert.True(t, len(prePids) < len(postPids))
+		L:
+			for _, post := range postPids {
+				for _, pre := range prePids {
+					if pre == post {
+						continue L
+					}
+				}
+				_ = exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(post)).Run()
+			}
 		})
 	}
 }
@@ -53,7 +63,19 @@ func findPids(exe string) (ret []int, err error) {
 	return
 }
 
+func kill(exe string) error {
+	ret, err := findPids(exe)
+	if err != nil {
+		return err
+	}
+	for _, pid := range ret {
+		_ = exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(pid)).Run()
+	}
+	return nil
+}
+
 func TestTimeoutToOpenKioskWeb(t *testing.T) {
+	defer kill("iexplore.exe")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
@@ -61,11 +83,12 @@ func TestTimeoutToOpenKioskWeb(t *testing.T) {
 		"http://localhost:8000",
 		Config{Browser: IE, WaitCtx: ctx},
 	)
-	assert.Error(t, err)
+	assert.Equal(t, context.DeadlineExceeded, err)
 }
 
 func TestNotTimeoutToOpenKioskWeb(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer kill("iexplore.exe")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	server := &http.Server{Addr: ":8000"}

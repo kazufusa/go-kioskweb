@@ -31,6 +31,8 @@ const (
 	Chrome browser = "Chrome"
 	// Firefox
 	Firefox browser = "Firefox"
+
+	waitForBrowserToOpen = time.Minute
 )
 
 var (
@@ -88,24 +90,40 @@ func Open(url string, config Config) error {
 	var handle syscall.Handle
 	var handles []syscall.Handle
 
-	for i := 0; i < 20; i++ {
-		handles, err = findWindows(titleRegExps[config.Browser])
-		if err != nil {
-			return err
-		}
+	var ctx context.Context
+	if config.WaitCtx == nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), waitForBrowserToOpen)
+		defer cancel()
+	} else {
+		ctx = config.WaitCtx
+	}
 
-		if len(pHandles) > 0 {
-			handle, err = newlyOpenedWindow(pHandles, handles)
-			if err == nil {
-				break
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+L:
+	for {
+		select {
+		case <-ticker.C:
+			handles, err = findWindows(titleRegExps[config.Browser])
+			if err != nil {
+				return err
 			}
-		} else {
-			if len(handles) > 0 {
-				handle = handles[0]
-				break
+
+			if len(pHandles) > 0 {
+				handle, err = newlyOpenedWindow(pHandles, handles)
+				if err == nil {
+					break L
+				}
+			} else {
+				if len(handles) > 0 {
+					handle = handles[0]
+					break L
+				}
 			}
+		case <-ctx.Done():
+			break L
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	// escape from start menu if Windows is in tablet mode
@@ -121,6 +139,7 @@ func Open(url string, config Config) error {
 // wait waits for a url to become available.
 func wait(ctx context.Context, url string) error {
 	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
